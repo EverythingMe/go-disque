@@ -152,7 +152,7 @@ func (c *RedisClient) Add(r AddRequest) (string, error) {
 	if r.Async {
 		args = args.Add("ASYNC")
 	}
-	fmt.Println(args)
+
 	id, err := redis.String(c.conn.Do("ADDJOB", args...))
 	if err != nil {
 		return "", errors.New("disque: could not add job: " + err.Error())

@@ -37,6 +37,40 @@ func TestAddJob(t *testing.T) {
 	//TODO: Add more edge case tests
 }
 
+func ExampleClient() {
+
+	client, err := Dial("tcp", time.Second, addr)
+	if err != nil {
+		panic(err)
+	}
+	defer client.Close()
+
+	qname := "test1"
+
+	// Create an "add" request with optional parameters.
+	// TODO: create a builder-style API for this
+	ja := AddRequest{
+		Job: Job{
+			Queue: qname,
+			Data:  []byte("foo"),
+		},
+		Timeout: time.Millisecond * 100,
+	}
+
+	// Add the job to the queue
+	if _, err := client.Add(ja); err != nil {
+		panic(err)
+	}
+
+	job, err := client.Get(time.Second, qname)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(string(job.Data))
+	// Output:
+	// foo
+}
 func TestClient(t *testing.T) {
 	client, err := Dial("tcp", time.Second, addr)
 	if err != nil {
