@@ -89,29 +89,6 @@ type RedisClient struct {
 	node Node
 }
 
-//// Dial tries to connect to one of the addrs of the servers, and returns a new client if it succeeds
-//func Dial(net string, timeout time.Duration, addrs ...string) (client Client, err error) {
-
-//	var conn redis.Conn
-//	for _, addr := range addrs {
-
-//		if conn, err = redis.DialTimeout(net, addr, timeout, timeout, timeout); err != nil {
-//			continue
-//		}
-
-//		client = &RedisClient{
-//			conn:  conn,
-//			net:   net,
-//			addrs: addrs,
-//		}
-
-//		break
-
-//	}
-
-//	return
-//}
-
 // Close closes the underlying connection
 func (c *RedisClient) Close() error {
 	return c.conn.Close()
@@ -275,7 +252,7 @@ func (c *RedisClient) Hello() (HelloResponse, error) {
 				continue
 			}
 
-			prio, err := strconv.ParseInt(string(arr[3].([]byte)), 32, 10)
+			prio, err := strconv.ParseInt(string(arr[3].([]byte)), 10, 32)
 			if err != nil {
 				log.Println("Invalid priority: %v", arr[3])
 				continue

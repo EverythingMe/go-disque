@@ -30,7 +30,8 @@ func TestAddJob(t *testing.T) {
 			Queue: "test",
 			Data:  []byte("foo"),
 		},
-		Timeout: time.Millisecond * 100,
+		Timeout:   time.Millisecond * 100,
+		Replicate: pool.Size(),
 	}
 
 	id, err := client.Add(ja)
@@ -65,7 +66,8 @@ func ExampleClient() {
 			Queue: qname,
 			Data:  []byte("foo"),
 		},
-		Timeout: time.Millisecond * 100,
+		Timeout:   time.Millisecond * 100,
+		Replicate: pool.Size(),
 	}
 
 	// Add the job to the queue
@@ -183,7 +185,8 @@ func TestClient(t *testing.T) {
 			Queue: qname,
 			Data:  []byte("foo"),
 		},
-		Timeout: time.Millisecond * 100,
+		Timeout:   time.Millisecond * 100,
+		Replicate: pool.Size(),
 	}
 
 	id, err := client.Add(ja)

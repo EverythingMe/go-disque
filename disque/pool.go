@@ -50,6 +50,17 @@ type Pool struct {
 	numBorrowed int
 }
 
+func (p *Pool) Size() int {
+	defer scopedLock(&p.mutx)()
+	n := 0
+	for _, node := range p.nodes {
+		if node.Priority <= maxPriority {
+			n++
+		}
+	}
+	return n
+}
+
 // NewPool creates a new client pool, with a given redis dial function, and an initial list of ip:port addresses
 // to try connecting to. You should call RefreshNodes after creating the pool to update the list of all
 // nodes in the pool, and optionally call RunRefreshLoop to let the queue do this periodically in the background
@@ -78,6 +89,9 @@ func scopedLock(m *sync.Mutex) func() {
 
 }
 
+//TMP - we only handle nodes with priority 1 right now
+const maxPriority = 1
+
 // selectNode select a valid node by random. Currently only nodes with priority 1 are selected
 func (p *Pool) selectNode(selected nodeList) (Node, error) {
 
@@ -87,7 +101,6 @@ func (p *Pool) selectNode(selected nodeList) (Node, error) {
 		return Node{}, errors.New("disque: no nodes in pool")
 	}
 
-	maxPriority := 1 //TMP - we only handle nodes with priority 1 right now
 	nodes := nodeList{}
 	for _, node := range p.nodes {
 		if node.Priority <= maxPriority && !selected.contains(node) {
