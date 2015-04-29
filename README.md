@@ -6,12 +6,20 @@ A simlpe Go client for the Disque in-memory distributed queue https://github.com
 
 ```go
 
+func dial(addr string) (redis.Conn, error) {
+	return redis.Dial("tcp", addr)
+}
+
 func ExampleClient() {
 
-	client, err := disque.Dial("tcp", time.Second, addr)
+	pool := disque.NewPool(disque.DialFunc(dial), "127.0.0.1:7711", "127.0.0.1:7712")
+
+	client, err := pool.Get()
 	if err != nil {
 		panic(err)
 	}
+	
+	
 	defer client.Close()
 
 	qname := "test1"

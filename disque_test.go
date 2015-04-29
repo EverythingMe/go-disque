@@ -51,8 +51,8 @@ func ExampleClient() {
 	pool := NewPool(DialFunc(dial), addr)
 
 	client, err := pool.Get()
-	if err != nil || client == nil {
-		panic("could not get client" + err.Error())
+	if err != nil {
+		panic(err)
 	}
 	defer client.Close()
 
