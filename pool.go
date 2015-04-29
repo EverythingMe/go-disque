@@ -10,9 +10,10 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-type NodeList []Node
+// NodeList is a list of nodes with search
+type nodeList []Node
 
-func (l NodeList) contains(n Node) bool {
+func (l nodeList) contains(n Node) bool {
 	for _, node := range l {
 		if n.Addr == node.Addr {
 			return true
@@ -29,22 +30,33 @@ type Node struct {
 	Priority int
 }
 
+// IsNull checks if a node is empty or not
 func (n Node) IsNull() bool {
 	return n.Addr == ""
 }
 
+// DialFunc is a redis dialer function that should be supplied to the pool
 type DialFunc func(string) (redis.Conn, error)
+
+// Pool is a client pool that keeps track of the available servers in the cluster, and retrieves
+// clients to random nodes in the cluster. Pooled connections should be closed to automatically
+// be returned to the pool
 type Pool struct {
 	mutx     sync.Mutex
-	nodes    NodeList
+	nodes    nodeList
 	pools    map[string]*redis.Pool
 	dialFunc DialFunc
+	// for borrow tests
+	numBorrowed int
 }
 
+// NewPool creates a new client pool, with a given redis dial function, and an initial list of ip:port addresses
+// to try connecting to. You should call RefreshNodes after creating the pool to update the list of all
+// nodes in the pool, and optionally call RunRefreshLoop to let the queue do this periodically in the background
 func NewPool(f DialFunc, addrs ...string) *Pool {
 
 	rand.Seed(time.Now().UnixNano())
-	nodes := NodeList{}
+	nodes := nodeList{}
 	for _, addr := range addrs {
 		nodes = append(nodes, Node{Addr: addr, Priority: 1})
 	}
@@ -66,7 +78,8 @@ func scopedLock(m *sync.Mutex) func() {
 
 }
 
-func (p *Pool) selectNode(selected NodeList) (Node, error) {
+// selectNode select a valid node by random. Currently only nodes with priority 1 are selected
+func (p *Pool) selectNode(selected nodeList) (Node, error) {
 
 	defer scopedLock(&p.mutx)()
 
@@ -75,7 +88,7 @@ func (p *Pool) selectNode(selected NodeList) (Node, error) {
 	}
 
 	maxPriority := 1 //TMP - we only handle nodes with priority 1 right now
-	nodes := NodeList{}
+	nodes := nodeList{}
 	for _, node := range p.nodes {
 		if node.Priority <= maxPriority && !selected.contains(node) {
 			nodes = append(nodes, node)
@@ -90,10 +103,12 @@ func (p *Pool) selectNode(selected NodeList) (Node, error) {
 }
 
 const (
-	maxIdle          = 3
-	refreshFrequency = time.Minute
+	maxIdle              = 3
+	refreshFrequency     = time.Minute
+	testOnBorrowInterval = time.Second
 )
 
+// getPool returns a redis connection pool for a given address
 func (p *Pool) getPool(addr string) *redis.Pool {
 
 	defer scopedLock(&p.mutx)()
@@ -104,6 +119,17 @@ func (p *Pool) getPool(addr string) *redis.Pool {
 			return p.dialFunc(addr)
 		}, maxIdle)
 
+		pool.TestOnBorrow = func(c redis.Conn, t time.Time) error {
+
+			// for testing - count how many borrows we did
+			p.numBorrowed++
+			if time.Since(t) > testOnBorrowInterval {
+				_, err := c.Do("PING")
+				return err
+			}
+			return nil
+		}
+
 		p.pools[addr] = pool
 	}
 
@@ -111,9 +137,10 @@ func (p *Pool) getPool(addr string) *redis.Pool {
 
 }
 
+// Get returns a client, or an error if we could not init one
 func (p *Pool) Get() (Client, error) {
 
-	selected := NodeList{}
+	selected := nodeList{}
 	var node Node
 	var err error
 	// select node to connect to
@@ -140,9 +167,26 @@ func (p *Pool) Put(c Client) {
 	c.(*RedisClient).conn.Close()
 }
 
-func (p *Pool) UpdateNodes(nodes NodeList) {
+func (p *Pool) UpdateNodes(nodes nodeList) {
 	defer scopedLock(&p.mutx)()
 	p.nodes = nodes
+}
+
+func (p *Pool) RefreshNodes() error {
+	client, err := p.Get()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	resp, err := client.Hello()
+	if err != nil {
+		return err
+	}
+
+	// update the node list based on the hello response
+	p.UpdateNodes(resp.Nodes)
+	return nil
 }
 
 func (p *Pool) RunRefreshLoop() {
@@ -150,20 +194,11 @@ func (p *Pool) RunRefreshLoop() {
 	go func() {
 		for range time.Tick(refreshFrequency) {
 
-			client, err := p.Get()
+			err := p.RefreshNodes()
 			if err != nil {
 				log.Println("disque pool: could not select client for refreshing")
-				continue
-			}
 
-			resp, err := client.Hello()
-			if err != nil {
-				log.Println("disque pool: error getting hello: %s", err)
-				continue
 			}
-
-			// update the node list based on the hello response
-			p.UpdateNodes(resp.Nodes)
 
 		}
 	}()

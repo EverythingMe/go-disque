@@ -51,7 +51,7 @@ type AddRequest struct {
 // HelloResponse is returned from the Hello command and tells us the state of the cluster
 type HelloResponse struct {
 	NodeId string
-	Nodes  NodeList
+	Nodes  nodeList
 }
 
 // Client is the interface that describes a disque client
@@ -266,7 +266,7 @@ func (c *RedisClient) Hello() (HelloResponse, error) {
 	}
 
 	ret.NodeId = string(vals[1].([]byte))
-	ret.Nodes = make(NodeList, 0, len(vals)-2)
+	ret.Nodes = make(nodeList, 0, len(vals)-2)
 	for _, v := range vals {
 
 		if arr, ok := v.([]interface{}); ok {

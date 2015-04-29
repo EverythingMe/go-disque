@@ -83,6 +83,33 @@ func ExampleClient() {
 	// foo
 }
 
+func TestPool(t *testing.T) {
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
+	}
+	client.Close()
+
+	client2, err := pool.Get()
+	if err != nil || client2 == nil {
+		panic("could not get client" + err.Error())
+	}
+
+	if pool.numBorrowed != 1 {
+		t.Errorf("WE should have borrowed the connection, but didn't")
+	}
+	if client, err = pool.Get(); err != nil || client == nil {
+		panic("could not get client" + err.Error())
+	}
+	if pool.numBorrowed != 1 {
+		t.Errorf("WE didn't return a pooled connection and called GET again, this shouldn't have borrowed a connection")
+	}
+
+	client2.Close()
+
+}
 func TestHello(t *testing.T) {
 
 	pool := NewPool(DialFunc(dial), addr)
@@ -119,7 +146,7 @@ func TestHello(t *testing.T) {
 
 	}
 
-	selected := NodeList{}
+	selected := nodeList{}
 	node, err := pool.selectNode(selected)
 	if err != nil {
 		t.Fatal(err)
