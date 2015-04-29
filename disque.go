@@ -4,6 +4,9 @@ package disque
 import (
 	"errors"
 	"fmt"
+	"log"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -45,18 +48,10 @@ type AddRequest struct {
 	Async bool
 }
 
-// Node describes a node in the cluster, received from Hello
-type Node struct {
-	Id       string
-	Addr     string
-	Priority int
-}
-
 // HelloResponse is returned from the Hello command and tells us the state of the cluster
 type HelloResponse struct {
-	versionId string
-	NodeId    string
-	Nodes     []Node
+	NodeId string
+	Nodes  NodeList
 }
 
 // Client is the interface that describes a disque client
@@ -90,33 +85,32 @@ type Client interface {
 
 // RedisClient implements a redigo based client
 type RedisClient struct {
-	conn  redis.Conn
-	net   string
-	addrs []string
+	conn redis.Conn
+	node Node
 }
 
-// Dial tries to connect to one of the addrs of the servers, and returns a new client if it succeeds
-func Dial(net string, timeout time.Duration, addrs ...string) (client Client, err error) {
+//// Dial tries to connect to one of the addrs of the servers, and returns a new client if it succeeds
+//func Dial(net string, timeout time.Duration, addrs ...string) (client Client, err error) {
 
-	var conn redis.Conn
-	for _, addr := range addrs {
+//	var conn redis.Conn
+//	for _, addr := range addrs {
 
-		if conn, err = redis.DialTimeout(net, addr, timeout, timeout, timeout); err != nil {
-			continue
-		}
+//		if conn, err = redis.DialTimeout(net, addr, timeout, timeout, timeout); err != nil {
+//			continue
+//		}
 
-		client = &RedisClient{
-			conn:  conn,
-			net:   net,
-			addrs: addrs,
-		}
+//		client = &RedisClient{
+//			conn:  conn,
+//			net:   net,
+//			addrs: addrs,
+//		}
 
-		break
+//		break
 
-	}
+//	}
 
-	return
-}
+//	return
+//}
 
 // Close closes the underlying connection
 func (c *RedisClient) Close() error {
@@ -250,8 +244,68 @@ func (c *RedisClient) Qlen(qname string) (int, error) {
 
 }
 
+const HelloVersionId = 1
+
 // Hello is a handshake request with the server, returns a description of the cluster state
 // TODO: implement this
 func (c *RedisClient) Hello() (HelloResponse, error) {
-	return HelloResponse{}, errors.New("Hello not implemented yet")
+
+	vals, err := redis.Values(c.conn.Do("HELLO"))
+	ret := HelloResponse{}
+	if err != nil {
+		return ret, err
+	}
+
+	if len(vals) < 3 {
+		return ret, fmt.Errorf("disque: invalid HELLO response: %v", vals)
+	}
+
+	versionId := vals[0].(int64)
+	if versionId != HelloVersionId {
+		return ret, fmt.Errorf("disque: unsupported HELLo version: %d, expected %d", versionId, HelloVersionId)
+	}
+
+	ret.NodeId = string(vals[1].([]byte))
+	ret.Nodes = make(NodeList, 0, len(vals)-2)
+	for _, v := range vals {
+
+		if arr, ok := v.([]interface{}); ok {
+			if len(arr) != 4 {
+				log.Println("Invalid HELLO entry: %v", arr)
+				continue
+			}
+
+			prio, err := strconv.ParseInt(string(arr[3].([]byte)), 32, 10)
+			if err != nil {
+				log.Println("Invalid priority: %v", arr[3])
+				continue
+			}
+
+			addr := ""
+			host := string(arr[1].([]byte))
+
+			//in a single node, it doesn't know its IP, we just take it from the client itself
+			if host == "" {
+				addr = c.node.Addr
+			} else {
+				addr = fmt.Sprintf("%s:%s", host, string(arr[2].([]byte)))
+			}
+
+			add, err := net.ResolveTCPAddr("tcp", addr)
+			if err != nil {
+				log.Printf("Invalid address given: %s", addr)
+				continue
+			}
+			node := Node{
+				Id:       string(arr[0].([]byte)),
+				Addr:     add.String(),
+				Priority: int(prio),
+			}
+
+			ret.Nodes = append(ret.Nodes, node)
+		}
+
+	}
+
+	return ret, nil
 }

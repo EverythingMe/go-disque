@@ -2,17 +2,26 @@ package disque
 
 import (
 	"fmt"
+	"net"
 	"testing"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
-const addr = "localhost:7711"
+const addr = "127.0.0.1:7711"
 
+func dial(addr string) (redis.Conn, error) {
+	timeout := time.Second
+	return redis.DialTimeout("tcp", addr, timeout, timeout, timeout)
+}
 func TestAddJob(t *testing.T) {
 
-	client, err := Dial("tcp", time.Second, addr)
-	if err != nil {
-		t.Fatal(err)
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
 	}
 	defer client.Close()
 
@@ -39,9 +48,11 @@ func TestAddJob(t *testing.T) {
 
 func ExampleClient() {
 
-	client, err := Dial("tcp", time.Second, addr)
-	if err != nil {
-		panic(err)
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
 	}
 	defer client.Close()
 
@@ -71,10 +82,49 @@ func ExampleClient() {
 	// Output:
 	// foo
 }
-func TestClient(t *testing.T) {
-	client, err := Dial("tcp", time.Second, addr)
+
+func TestHello(t *testing.T) {
+
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
+	}
+	defer client.Close()
+
+	ret, err := client.Hello()
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if ret.NodeId == "" {
+		t.Errorf("No node id in hello response")
+	}
+
+	if len(ret.Nodes) == 0 {
+		t.Errorf("No nodes returned from hello")
+	}
+
+	for _, node := range ret.Nodes {
+		if node.Id == "" {
+			t.Errorf("Node with empty id given")
+		}
+
+		if _, err := net.ResolveTCPAddr("tcp", node.Addr); err != nil {
+			t.Errorf("Invalid address given: %s", node.Addr)
+		}
+
+		fmt.Println(node)
+
+	}
+}
+func TestClient(t *testing.T) {
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
 	}
 	defer client.Close()
 	qname := "test1"
