@@ -6,6 +6,14 @@ A simlpe Go client for the Disque in-memory distributed queue https://github.com
 
 ```go
 
+import (
+	"fmt"
+	"time"
+	
+	"github.com/garyburd/redigo/redis"
+	"github.com/EverythingMe/go-disque/disque"
+)
+
 func dial(addr string) (redis.Conn, error) {
 	return redis.Dial("tcp", addr)
 }
