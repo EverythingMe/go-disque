@@ -118,6 +118,29 @@ func TestHello(t *testing.T) {
 		fmt.Println(node)
 
 	}
+
+	selected := NodeList{}
+	node, err := pool.selectNode(selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.Id != "" {
+		t.Errorf("at this stage node ids should be empty. got %s", node.Id)
+	}
+
+	// test updating node pool
+	pool.UpdateNodes(ret.Nodes)
+	fmt.Println(pool.nodes)
+
+	if node, err = pool.selectNode(selected); err != nil {
+		t.Fatal(err)
+	}
+
+	if node.Id == "" {
+		t.Errorf("at this stage node ids should NOT be empty. got %s", node.Id)
+	}
+	fmt.Println("selected: ", node)
+
 }
 func TestClient(t *testing.T) {
 	pool := NewPool(DialFunc(dial), addr)

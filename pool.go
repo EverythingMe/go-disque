@@ -3,6 +3,7 @@ package disque
 import (
 	"errors"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -42,6 +43,7 @@ type Pool struct {
 
 func NewPool(f DialFunc, addrs ...string) *Pool {
 
+	rand.Seed(time.Now().UnixNano())
 	nodes := NodeList{}
 	for _, addr := range addrs {
 		nodes = append(nodes, Node{Addr: addr, Priority: 1})
@@ -73,13 +75,17 @@ func (p *Pool) selectNode(selected NodeList) (Node, error) {
 	}
 
 	maxPriority := 1 //TMP - we only handle nodes with priority 1 right now
+	nodes := NodeList{}
 	for _, node := range p.nodes {
 		if node.Priority <= maxPriority && !selected.contains(node) {
-			return node, nil
+			nodes = append(nodes, node)
 		}
 	}
+	if len(nodes) == 0 {
+		return Node{}, errors.New("disque: no nodes left to select from")
+	}
 
-	return Node{}, errors.New("disque: no nodes left to select from")
+	return nodes[rand.Intn(len(nodes))], nil
 
 }
 
