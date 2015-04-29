@@ -163,15 +163,14 @@ func (p *Pool) Get() (Client, error) {
 	}
 
 }
-func (p *Pool) Put(c Client) {
-	c.(*RedisClient).conn.Close()
-}
 
+// UpdateNodes explicitly sets the nodes of the pool
 func (p *Pool) UpdateNodes(nodes nodeList) {
 	defer scopedLock(&p.mutx)()
 	p.nodes = nodes
 }
 
+// RefreshNodes uses a HELLO call to refresh the node list in the cluster
 func (p *Pool) RefreshNodes() error {
 	client, err := p.Get()
 	if err != nil {
@@ -189,6 +188,7 @@ func (p *Pool) RefreshNodes() error {
 	return nil
 }
 
+// RunRefreshLoop starts a goroutine that periodically refreshes the node list using HELLO
 func (p *Pool) RunRefreshLoop() {
 
 	go func() {
