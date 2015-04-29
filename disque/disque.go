@@ -132,11 +132,11 @@ func (c *RedisClient) Add(r AddRequest) (string, error) {
 	}
 
 	if r.Retry > 0 {
-		args = args.Add("DELAY", int64(r.Retry.Seconds()))
+		args = args.Add("RETRY", int64(r.Retry.Seconds()))
 	}
 
 	if r.TTL > 0 {
-		args = args.Add("DELAY", int64(r.TTL.Seconds()))
+		args = args.Add("TTL", int64(r.TTL.Seconds()))
 	}
 
 	if r.Maxlen > 0 {
