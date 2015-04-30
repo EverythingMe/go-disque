@@ -227,3 +227,32 @@ func TestClient(t *testing.T) {
 	}
 
 }
+
+func BenchmarkAdd(b *testing.B) {
+
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
+	}
+	defer client.Close()
+
+	ja := AddRequest{
+		Job: Job{
+			Queue: "bq",
+			Data:  []byte("foo"),
+		},
+		Timeout:   time.Millisecond * 100,
+		Replicate: pool.Size(),
+		Async:     false,
+	}
+
+	for i := 0; i < b.N; i++ {
+
+		_, err := client.Add(ja)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}

@@ -107,6 +107,8 @@ func (c *RedisClient) Add(r AddRequest) (string, error) {
 	if r.Delay > 0 {
 		args = args.Add("DELAY", int64(r.Delay.Seconds()))
 	}
+	
+	
 
 	if r.Retry > 0 {
 		args = args.Add("RETRY", int64(r.Retry.Seconds()))

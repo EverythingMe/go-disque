@@ -62,18 +62,17 @@ func ExampleSend() {
 		ch <- fmt.Sprintf("Message %d", i)
 	}
 
+	// Output:
 }
 
 func ExampleRecv() {
 
 	c := NewChan("mychan", false, "127.0.0.1:7711")
-
 	rch := c.RecvChan()
 
 	i := 0
-	for v := range rch {
+	for _ := range rch {
 
-		fmt.Println("Received: ", v)
 		i++
 		if i == 10 {
 			fmt.Println("finished")
@@ -81,5 +80,8 @@ func ExampleRecv() {
 		}
 
 	}
+
+	// Output:
+	// finished
 
 }
