@@ -29,7 +29,7 @@ func TestTasque(t *testing.T) {
 
 	worker.Handle(IncrementHandler)
 
-	worker.Run()
+	go worker.Run()
 
 	client := NewClient(5*time.Second, "127.0.0.1:7711")
 
@@ -77,7 +77,7 @@ func Example() {
 
 	worker.Handle(Downloader)
 
-	worker.Run()
+	go worker.Run()
 
 	client := NewClient(5*time.Second, "127.0.0.1:7711")
 

@@ -56,7 +56,7 @@ func NewChan(name string, async bool, addrs ...string) *Chan {
 		async:  async,
 		stopch: make(chan bool),
 	}
-
+	fmt.Println(addrs)
 	err := ret.pool.RefreshNodes()
 	if err != nil {
 		log.Println("Error refreshing nodes: %s", err)
@@ -116,11 +116,12 @@ func (c *Chan) receiveLoop() {
 		client, err := c.pool.Get()
 
 		if err != nil {
-			log.Println("disqchan: could not get client")
+			log.Println("disqchan: could not get client:", err)
 			select {
 			case <-c.stopch:
 				return
 			case <-time.After(100 * time.Millisecond):
+				continue
 			}
 
 		}
@@ -169,8 +170,14 @@ func (c *Chan) sendLoop() {
 
 		client, err := c.pool.Get()
 		if err != nil {
-			log.Println("disqchan: Cannot send message - could not get client")
-			return
+			log.Println("disqchan: Cannot send message - could not get client", err)
+			select {
+			case <-c.stopch:
+				return
+			case <-time.After(100 * time.Millisecond):
+				continue
+			}
+
 		}
 		select {
 
@@ -202,5 +209,6 @@ func (c *Chan) sendLoop() {
 			return
 
 		}
+		client.Close()
 	}
 }

@@ -46,9 +46,11 @@ func (c *Client) Do(t *Task) error {
 func (c *Client) Delay(t *Task, delay time.Duration) error {
 
 	client, err := c.pool.Get()
+
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	b, err := t.marshal()
 	if err != nil {

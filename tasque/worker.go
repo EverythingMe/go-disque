@@ -92,8 +92,14 @@ func (w *Worker) handlerLoop() {
 		if err != nil {
 			log.Println("tasque: Error handling task %s: %s", task.Name, err)
 		} else {
-			client, _ := w.pool.Get()
-			client.Ack(task.JobId())
+			client, err := w.pool.Get()
+			if err != nil {
+				log.Println("Error getting client: %s", err)
+			} else {
+				client.Ack(task.JobId())
+				client.Close()
+			}
+
 		}
 	}
 }
@@ -113,54 +119,52 @@ func (w *Worker) Run() {
 		go w.handlerLoop()
 	}
 
-	go func() {
+	for {
+		client, err := w.pool.Get()
+		defer client.Close()
+		if err != nil {
+			log.Println("tasque: could not get client")
+			select {
+			case <-w.stopch:
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+
+		}
 
 		for {
-			client, err := w.pool.Get()
-			defer client.Close()
-			if err != nil {
-				log.Println("tasque: could not get client")
-				select {
-				case <-w.stopch:
-					return
-				case <-time.After(100 * time.Millisecond):
-				}
-
+			select {
+			case <-w.stopch:
+				return
+			default:
 			}
 
-			for {
-				select {
-				case <-w.stopch:
-					return
-				default:
-				}
+			job, err := client.Get(getTimeout, w.channels...)
 
-				job, err := client.Get(getTimeout, w.channels...)
+			if err == nil {
 
-				if err == nil {
+				if job.Data != nil {
 
-					if job.Data != nil {
-
-						task := new(Task)
-						if err := json.Unmarshal(job.Data, task); err != nil {
-							log.Printf("tasque: Could not unmarshal message data: %s", err)
-							continue
-						}
-						task.jobId = job.Id()
-
-						select {
-						case w.workchan <- task:
-						case <-w.stopch:
-							return
-						}
+					task := new(Task)
+					if err := json.Unmarshal(job.Data, task); err != nil {
+						log.Printf("tasque: Could not unmarshal message data: %s", err)
+						continue
 					}
+					task.jobId = job.Id()
 
-				} else {
-					log.Println("Error receiving: %s", err)
-					client.Close()
-					break
+					select {
+					case w.workchan <- task:
+					case <-w.stopch:
+						return
+					}
 				}
+
+			} else {
+				log.Println("Error receiving: %s", err)
+				client.Close()
+				break
 			}
 		}
-	}()
+	}
+
 }

@@ -71,8 +71,8 @@ func ExampleRecv() {
 	rch := c.RecvChan()
 
 	i := 0
-	for _ := range rch {
-
+	for range rch {
+		//fmt.Println(x)
 		i++
 		if i == 10 {
 			fmt.Println("finished")
