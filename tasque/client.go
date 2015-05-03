@@ -36,10 +36,13 @@ func NewClient(enqueueTimeout time.Duration, addrs ...string) *Client {
 func qname(tname string) string {
 	return fmt.Sprintf("__tasque__%s", tname)
 }
+
+// Do puts the task in the queue for immediate execution
 func (c *Client) Do(t *Task) error {
 	return c.Delay(t, 0)
 }
 
+// Delay puts the task in the queue for execution after the delay period of time
 func (c *Client) Delay(t *Task, delay time.Duration) error {
 
 	client, err := c.pool.Get()

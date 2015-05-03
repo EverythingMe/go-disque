@@ -107,8 +107,6 @@ func (c *RedisClient) Add(r AddRequest) (string, error) {
 	if r.Delay > 0 {
 		args = args.Add("DELAY", int64(r.Delay.Seconds()))
 	}
-	
-	
 
 	if r.Retry > 0 {
 		args = args.Add("RETRY", int64(r.Retry.Seconds()))
@@ -221,6 +219,15 @@ func (c *RedisClient) Qlen(qname string) (int, error) {
 
 	return redis.Int(c.conn.Do("QLEN", qname))
 
+}
+
+// Enqueue an already existing job by jobId. This can be used for fast retries
+func (c *RedisClient) Enqueue(jobIds ...string) error {
+
+	args := redis.Args{}
+	args.AddFlat(jobIds)
+	_, err := c.conn.Do("ENQUEUE", args)
+	return err
 }
 
 const HelloVersionId = 1

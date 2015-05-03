@@ -2,7 +2,6 @@ package tasque
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -52,7 +51,7 @@ func (w *Worker) Handle(h TaskHandler) {
 	w.handlers[h.Id()] = h
 
 	w.channels = append(w.channels, qname(h.Id()))
-	fmt.Println(w.handlers, w.channels)
+
 }
 
 const getTimeout = time.Second
@@ -139,9 +138,6 @@ func (w *Worker) Run() {
 				job, err := client.Get(getTimeout, w.channels...)
 
 				if err == nil {
-					fmt.Println("Got job: %s", string(job.Data))
-					//ACK here?
-					//client.Ack(job.Id())
 
 					if job.Data != nil {
 
@@ -151,8 +147,6 @@ func (w *Worker) Run() {
 							continue
 						}
 						task.jobId = job.Id()
-
-						fmt.Println(*task)
 
 						select {
 						case w.workchan <- task:

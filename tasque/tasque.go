@@ -1,4 +1,11 @@
-// Package tasque is an example task processing framework on top of disque
+// Package tasque implements a simple task processing framework on top of disque.
+// The idea is that you create "task handlers" that process tasks, similar to how http handlers process requests.
+// Each task handler must have a unique name or id that is used to enqueue tasks in it, like a n http handler
+// is routed to a URL.
+//
+// You create a Worker that is a server for executing task handlers, and register task handlers in it.
+//
+// Then,for enqueueing tasks, you create a client and enqueue them by name, optionally giving tasks properties.
 package tasque
 
 import (
