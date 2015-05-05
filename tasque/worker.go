@@ -85,6 +85,7 @@ func (w *Worker) handlerLoop() {
 		handler, found := w.getHandler(task)
 		if !found {
 			log.Printf("tasque: ERROR no handler for task %s", task.Name)
+			continue
 		}
 
 		// call a safe runner func

@@ -56,7 +56,7 @@ func NewChan(name string, async bool, addrs ...string) *Chan {
 		async:  async,
 		stopch: make(chan bool),
 	}
-	fmt.Println(addrs)
+
 	err := ret.pool.RefreshNodes()
 	if err != nil {
 		log.Println("Error refreshing nodes: %s", err)

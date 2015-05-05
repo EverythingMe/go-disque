@@ -50,7 +50,6 @@ func TestAddJob(t *testing.T) {
 func ExampleClient() {
 
 	pool := NewPool(DialFunc(dial), addr)
-
 	client, err := pool.Get()
 	if err != nil {
 		panic(err)
