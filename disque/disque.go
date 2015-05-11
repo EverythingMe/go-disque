@@ -159,7 +159,7 @@ func (c *RedisClient) GetMulti(count int, timeout time.Duration, queues ...strin
 
 	args := redis.Args{}
 	if timeout > 0 {
-		args.Add("TIMEOUT", timeout/time.Millisecond)
+		args = args.Add("TIMEOUT", int64(timeout/time.Millisecond))
 	}
 	if count > 0 {
 		args = args.Add("COUNT", count)
