@@ -196,7 +196,7 @@ func (c *RedisClient) GetMulti(count int, timeout time.Duration, queues ...strin
 func (c *RedisClient) Ack(jobIds ...string) error {
 
 	args := make(redis.Args, 0, len(jobIds))
-	args.AddFlat(jobIds)
+	args = args.AddFlat(jobIds)
 	if _, err := c.conn.Do("ACKJOB", args...); err != nil {
 		return fmt.Errorf("disque: error sending ACK: %s", err)
 	}
@@ -207,7 +207,7 @@ func (c *RedisClient) Ack(jobIds ...string) error {
 // difference between ACK and FASTACK
 func (c *RedisClient) FastAck(jobIds ...string) error {
 	args := make(redis.Args, 0, len(jobIds))
-	args.AddFlat(jobIds)
+	args = args.AddFlat(jobIds)
 	if _, err := c.conn.Do("FASTACK", args...); err != nil {
 		return fmt.Errorf("disque: error sending ACK: %s", err)
 	}
