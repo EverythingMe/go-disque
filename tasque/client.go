@@ -65,6 +65,8 @@ func (c *Client) Delay(t *Task, delay time.Duration) (string, error) {
 		Timeout:   c.enqueueTimeout,
 		Replicate: c.replicationFactor,
 		Delay:     delay,
+		TTL: t.ttl,
+		Retry:     t.retry,
 	}
 
 	id, err := client.Add(ar)
