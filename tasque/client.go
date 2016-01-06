@@ -38,23 +38,23 @@ func qname(tname string) string {
 }
 
 // Do puts the task in the queue for immediate execution
-func (c *Client) Do(t *Task) error {
+func (c *Client) Do(t *Task) (string, error) {
 	return c.Delay(t, 0)
 }
 
 // Delay puts the task in the queue for execution after the delay period of time
-func (c *Client) Delay(t *Task, delay time.Duration) error {
+func (c *Client) Delay(t *Task, delay time.Duration) (string, error) {
 
 	client, err := c.pool.Get()
 
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer client.Close()
 
 	b, err := t.marshal()
 	if err != nil {
-		return fmt.Errorf("Could not marshal task: %s", err)
+		return "", fmt.Errorf("Could not marshal task: %s", err)
 	}
 
 	ar := disque.AddRequest{
@@ -67,6 +67,8 @@ func (c *Client) Delay(t *Task, delay time.Duration) error {
 		Delay:     delay,
 	}
 
-	_, err = client.Add(ar)
-	return err
+	id, err := client.Add(ar)
+	t.jobId = id
+	
+	return id, err
 }
