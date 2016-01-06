@@ -24,7 +24,7 @@ type Task struct {
 	retry       time.Duration
 }
 
-// JobId The task's jobId, applicable only to tasks received from the server
+// JobId The task's jobId
 func (t Task) JobId() string {
 	return t.jobId
 }
@@ -61,12 +61,12 @@ func (t *Task) SetRetry(d time.Duration) *Task {
 }
 
 // Execute the task on the client
-func (t *Task) Do(c *Client) error {
+func (t *Task) Do(c *Client) (string, error) {
 	return c.Do(t)
 }
 
 // Delay executes the task, delayed for d duration
-func (t *Task) Delay(c *Client, d time.Duration) error {
+func (t *Task) Delay(c *Client, d time.Duration) (string, error) {
 	return c.Delay(t, d)
 }
 
