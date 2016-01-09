@@ -39,6 +39,9 @@ func TestTasque(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if task.JobId() == "" {
+			t.Error("No task jobId")
+		}
 	}
 
 	time.Sleep(500 * time.Millisecond)

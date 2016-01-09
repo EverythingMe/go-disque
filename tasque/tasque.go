@@ -24,7 +24,7 @@ type Task struct {
 	retry       time.Duration
 }
 
-// JobId The task's jobId, applicable only to tasks received from the server
+// JobId The task's jobId
 func (t Task) JobId() string {
 	return t.jobId
 }

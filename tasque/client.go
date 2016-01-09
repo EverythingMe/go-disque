@@ -37,12 +37,13 @@ func qname(tname string) string {
 	return fmt.Sprintf("__tasque__%s", tname)
 }
 
-// Do puts the task in the queue for immediate execution
+// Do puts the task in the queue for immediate execution, and set the task's jobId
 func (c *Client) Do(t *Task) error {
 	return c.Delay(t, 0)
 }
 
-// Delay puts the task in the queue for execution after the delay period of time
+// Delay puts the task in the queue for execution after the delay period of time.
+// This also sets the jobId of the task
 func (c *Client) Delay(t *Task, delay time.Duration) error {
 
 	client, err := c.pool.Get()
@@ -67,6 +68,7 @@ func (c *Client) Delay(t *Task, delay time.Duration) error {
 		Delay:     delay,
 	}
 
-	_, err = client.Add(ar)
+	t.jobId, err = client.Add(ar)
+
 	return err
 }
