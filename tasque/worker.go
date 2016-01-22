@@ -161,7 +161,7 @@ func (w *Worker) Run() {
 				}
 
 			} else {
-				log.Println("Error receiving: %s", err)
+				log.Printf("Error receiving: %s", err)
 				client.Close()
 				break
 			}
