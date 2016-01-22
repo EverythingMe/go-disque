@@ -170,7 +170,7 @@ func (c *RedisClient) GetMulti(count int, timeout time.Duration, queues ...strin
 	vals, err := redis.Values(c.conn.Do("GETJOB", args...))
 
 	if err != nil {
-		return nil, fmt.Errorf("disque: could not get jobs: %s", err)
+		return nil, err
 	}
 
 	ret := make([]Job, 0, len(vals))
