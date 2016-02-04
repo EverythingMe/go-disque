@@ -1,6 +1,6 @@
 # go-disque
 
-A simlpe Go client for the Disque in-memory distributed queue https://github.com/antirez/disque
+A simple Go client for the Disque in-memory distributed queue https://github.com/antirez/disque
 
 ## Example:
 
