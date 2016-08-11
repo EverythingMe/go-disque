@@ -3,6 +3,7 @@ package disque
 import (
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,8 +40,8 @@ func TestAddJob(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if id == "" {
-		t.Errorf("Invalid id")
+	if len(id) != 40 && strings.HasPrefix(id, "D-") {
+		t.Errorf("Invalid id. got %s", id)
 	}
 
 	fmt.Println("id: ", id)
@@ -72,8 +73,8 @@ func TestAddMulti(t *testing.T) {
 		t.Errorf("expected 1 id in response. got %d", len(ids))
 	}
 
-	if ids[0] == "" {
-		t.Errorf("Invalid id")
+	if len(ids[0]) != 40 && strings.HasPrefix(ids[0], "D-") {
+		t.Errorf("Invalid id. got %s", ids[0])
 	}
 }
 
