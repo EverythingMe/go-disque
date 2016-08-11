@@ -60,6 +60,12 @@ type Client interface {
 	// Add sents an ADDJOB command to disque, as specified by the AddRequest. Returns the job id or an error
 	Add(AddRequest) (string, error)
 
+	// SendAdd sends an ADDJOB command to disque without waiting for reply
+	SendAdd(AddRequest) error
+
+	// FinishAdd receives all replies for SendAdd calls
+	FinishAdd() ([]string, error)
+
 	// Get gets one job from any of the given queues, or times out if timeout has elapsed without a job being available. Returns a job or an error
 	Get(timeout time.Duration, queues ...string) (Job, error)
 
@@ -98,6 +104,32 @@ func (c *RedisClient) Close() error {
 func (c *RedisClient) Add(r AddRequest) (string, error) {
 	//ADDJOB queue_name job <ms-timeout> [REPLICATE <count>] [DELAY <sec>] [RETRY <sec>] [TTL <sec>] [MAXLEN <count>] [ASYNC]
 
+	id, err := redis.String(c.conn.Do("ADDJOB", addArgs(r)...))
+	if err != nil {
+		return "", errors.New("disque: could not add job: " + err.Error())
+	}
+	return id, nil
+}
+
+// SendAdd sends an ADDJOB command to disque without waiting for reply
+func (c *RedisClient) SendAdd(r AddRequest) error {
+	return c.conn.Send("ADDJOB", addArgs(r)...)
+}
+
+// FinishAdd receives all replies for SendAdd calls
+func (c *RedisClient) FinishAdd() ([]string, error) {
+	replies, err := redis.Values(c.conn.Do("")) //  flush the output buffer and receive pending replies
+	ids := make([]string, len(replies))
+	for i, val := range replies {
+		if id, ok := val.(string); ok {
+			ids[i] = id
+		}
+	}
+	return ids, err
+}
+
+// builds ADDJOB args
+func addArgs(r AddRequest) redis.Args {
 	args := redis.Args{r.Job.Queue, r.Job.Data, int(r.Timeout / time.Millisecond)}
 
 	if r.Replicate > 0 {
@@ -123,12 +155,7 @@ func (c *RedisClient) Add(r AddRequest) (string, error) {
 	if r.Async {
 		args = args.Add("ASYNC")
 	}
-
-	id, err := redis.String(c.conn.Do("ADDJOB", args...))
-	if err != nil {
-		return "", errors.New("disque: could not add job: " + err.Error())
-	}
-	return id, nil
+	return args
 }
 
 // Get gets one job from any of the given queues, or times out if timeout has elapsed without a job being available.

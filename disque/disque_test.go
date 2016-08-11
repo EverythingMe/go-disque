@@ -47,6 +47,41 @@ func TestAddJob(t *testing.T) {
 	//TODO: Add more edge case tests
 }
 
+func TestSendAdd(t *testing.T) {
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
+	}
+	defer client.Close()
+
+	ja := AddRequest{
+		Job: Job{
+			Queue: "test",
+			Data:  []byte("foo"),
+		},
+	}
+
+	err = client.SendAdd(ja)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ids, err := client.FinishAdd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(ids) != 1 {
+		t.Errorf("expected 1 id in response. got %d", len(ids))
+	}
+
+	if ids[0] == "" {
+		t.Errorf("Invalid id")
+	}
+}
+
 func ExampleClient() {
 
 	pool := NewPool(DialFunc(dial), addr)
