@@ -60,11 +60,8 @@ type Client interface {
 	// Add sents an ADDJOB command to disque, as specified by the AddRequest. Returns the job id or an error
 	Add(AddRequest) (string, error)
 
-	// SendAdd sends an ADDJOB command to disque without waiting for reply
-	SendAdd(AddRequest) error
-
-	// FinishAdd receives all replies for SendAdd calls
-	FinishAdd() ([]string, error)
+	// AddMulti sends multiple ADDJOB in pipeline
+	AddMulti([]AddRequest) ([]string, error)
 
 	// Get gets one job from any of the given queues, or times out if timeout has elapsed without a job being available. Returns a job or an error
 	Get(timeout time.Duration, queues ...string) (Job, error)
@@ -111,14 +108,15 @@ func (c *RedisClient) Add(r AddRequest) (string, error) {
 	return id, nil
 }
 
-// SendAdd sends an ADDJOB command to disque without waiting for reply
-func (c *RedisClient) SendAdd(r AddRequest) error {
-	return c.conn.Send("ADDJOB", addArgs(r)...)
-}
-
-// FinishAdd receives all replies for SendAdd calls
-func (c *RedisClient) FinishAdd() ([]string, error) {
-	replies, err := redis.Values(c.conn.Do("")) //  flush the output buffer and receive pending replies
+// AddMulti sends multiple ADDJOB in pipeline
+func (c *RedisClient) AddMulti(rs []AddRequest) ([]string, error) {
+	for _, r := range rs {
+		if err := c.conn.Send("ADDJOB", addArgs(r)...); err != nil {
+			return nil, err
+		}
+	}
+	// flush the output buffer and receive pending replies
+	replies, err := redis.Values(c.conn.Do(""))
 	ids := make([]string, len(replies))
 	for i, val := range replies {
 		if id, ok := val.(string); ok {

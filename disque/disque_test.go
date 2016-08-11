@@ -47,7 +47,7 @@ func TestAddJob(t *testing.T) {
 	//TODO: Add more edge case tests
 }
 
-func TestSendAdd(t *testing.T) {
+func TestAddMulti(t *testing.T) {
 	pool := NewPool(DialFunc(dial), addr)
 
 	client, err := pool.Get()
@@ -63,12 +63,7 @@ func TestSendAdd(t *testing.T) {
 		},
 	}
 
-	err = client.SendAdd(ja)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ids, err := client.FinishAdd()
+	ids, err := client.AddMulti([]AddRequest{ja})
 	if err != nil {
 		t.Fatal(err)
 	}
