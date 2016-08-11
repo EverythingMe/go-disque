@@ -60,6 +60,9 @@ type Client interface {
 	// Add sents an ADDJOB command to disque, as specified by the AddRequest. Returns the job id or an error
 	Add(AddRequest) (string, error)
 
+	// AddMulti sends multiple ADDJOB in pipeline
+	AddMulti([]AddRequest) ([]string, error)
+
 	// Get gets one job from any of the given queues, or times out if timeout has elapsed without a job being available. Returns a job or an error
 	Get(timeout time.Duration, queues ...string) (Job, error)
 
@@ -98,6 +101,33 @@ func (c *RedisClient) Close() error {
 func (c *RedisClient) Add(r AddRequest) (string, error) {
 	//ADDJOB queue_name job <ms-timeout> [REPLICATE <count>] [DELAY <sec>] [RETRY <sec>] [TTL <sec>] [MAXLEN <count>] [ASYNC]
 
+	id, err := redis.String(c.conn.Do("ADDJOB", addArgs(r)...))
+	if err != nil {
+		return "", errors.New("disque: could not add job: " + err.Error())
+	}
+	return id, nil
+}
+
+// AddMulti sends multiple ADDJOB in pipeline
+func (c *RedisClient) AddMulti(rs []AddRequest) ([]string, error) {
+	for _, r := range rs {
+		if err := c.conn.Send("ADDJOB", addArgs(r)...); err != nil {
+			return nil, err
+		}
+	}
+	// flush the output buffer and receive pending replies
+	replies, err := redis.Values(c.conn.Do(""))
+	ids := make([]string, len(replies))
+	for i, val := range replies {
+		if id, ok := val.(string); ok {
+			ids[i] = id
+		}
+	}
+	return ids, err
+}
+
+// builds ADDJOB args
+func addArgs(r AddRequest) redis.Args {
 	args := redis.Args{r.Job.Queue, r.Job.Data, int(r.Timeout / time.Millisecond)}
 
 	if r.Replicate > 0 {
@@ -123,12 +153,7 @@ func (c *RedisClient) Add(r AddRequest) (string, error) {
 	if r.Async {
 		args = args.Add("ASYNC")
 	}
-
-	id, err := redis.String(c.conn.Do("ADDJOB", args...))
-	if err != nil {
-		return "", errors.New("disque: could not add job: " + err.Error())
-	}
-	return id, nil
+	return args
 }
 
 // Get gets one job from any of the given queues, or times out if timeout has elapsed without a job being available.

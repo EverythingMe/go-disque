@@ -3,6 +3,7 @@ package disque
 import (
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,12 +40,42 @@ func TestAddJob(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if id == "" {
-		t.Errorf("Invalid id")
+	if len(id) != 40 && strings.HasPrefix(id, "D-") {
+		t.Errorf("Invalid id. got %s", id)
 	}
 
 	fmt.Println("id: ", id)
 	//TODO: Add more edge case tests
+}
+
+func TestAddMulti(t *testing.T) {
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
+	}
+	defer client.Close()
+
+	ja := AddRequest{
+		Job: Job{
+			Queue: "test",
+			Data:  []byte("foo"),
+		},
+	}
+
+	ids, err := client.AddMulti([]AddRequest{ja})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(ids) != 1 {
+		t.Errorf("expected 1 id in response. got %d", len(ids))
+	}
+
+	if len(ids[0]) != 40 && strings.HasPrefix(ids[0], "D-") {
+		t.Errorf("Invalid id. got %s", ids[0])
+	}
 }
 
 func ExampleClient() {
