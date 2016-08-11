@@ -46,6 +46,10 @@ func TestAddJob(t *testing.T) {
 
 	fmt.Println("id: ", id)
 	//TODO: Add more edge case tests
+
+	if err = pool.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestAddMulti(t *testing.T) {

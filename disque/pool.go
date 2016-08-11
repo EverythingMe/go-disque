@@ -150,6 +150,19 @@ func (p *Pool) getPool(addr string) *redis.Pool {
 
 }
 
+// Close closes all pools
+func (p *Pool) Close() error {
+	defer scopedLock(&p.mutx)()
+
+	var err error
+	for _, pool := range p.pools {
+		if e := pool.Close(); e != nil {
+			err = e
+		}
+	}
+	return err
+}
+
 // Get returns a client, or an error if we could not init one
 func (p *Pool) Get() (Client, error) {
 
