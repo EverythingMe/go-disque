@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -47,7 +48,7 @@ type Pool struct {
 	pools    map[string]*redis.Pool
 	dialFunc DialFunc
 	// for borrow tests
-	numBorrowed int
+	numBorrowed int64
 }
 
 func (p *Pool) Size() int {
@@ -135,7 +136,7 @@ func (p *Pool) getPool(addr string) *redis.Pool {
 		pool.TestOnBorrow = func(c redis.Conn, t time.Time) error {
 
 			// for testing - count how many borrows we did
-			p.numBorrowed++
+			atomic.AddInt64(&p.numBorrowed, 1)
 			if time.Since(t) > testOnBorrowInterval {
 				_, err := c.Do("PING")
 				return err
