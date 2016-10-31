@@ -262,6 +262,34 @@ func TestClient(t *testing.T) {
 
 }
 
+func TestNack(t *testing.T) {
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
+	}
+	defer client.Close()
+	qname := "test1"
+	ja := AddRequest{
+		Job: Job{
+			Queue: qname,
+			Data:  []byte("foo"),
+		},
+		Timeout:   time.Millisecond * 100,
+		Replicate: pool.Size(),
+	}
+
+	id, err := client.Add(ja)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = client.Nack(id); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func BenchmarkAdd(b *testing.B) {
 
 	pool := NewPool(DialFunc(dial), addr)

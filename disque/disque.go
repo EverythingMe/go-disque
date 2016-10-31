@@ -76,6 +76,9 @@ type Client interface {
 	// difference between ACK and FASTACK
 	FastAck(jobIds ...string) error
 
+	// Nack sends and NACK command with the given job ids
+	Nack(jobIds ...string) error
+
 	// Qlen returns the length of a given queue
 	Qlen(qname string) (int, error)
 
@@ -235,6 +238,16 @@ func (c *RedisClient) FastAck(jobIds ...string) error {
 	args = args.AddFlat(jobIds)
 	if _, err := c.conn.Do("FASTACK", args...); err != nil {
 		return fmt.Errorf("disque: error sending ACK: %s", err)
+	}
+	return nil
+}
+
+// Nack sends a NACK command with the given job ids
+func (c *RedisClient) Nack(jobIds ...string) error {
+	args := make(redis.Args, 0, len(jobIds))
+	args = args.AddFlat(jobIds)
+	if _, err := c.conn.Do("NACK", args...); err != nil {
+		return fmt.Errorf("disque: error sending NACK: %s", err)
 	}
 	return nil
 }
