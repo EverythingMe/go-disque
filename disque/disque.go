@@ -82,6 +82,9 @@ type Client interface {
 	// Hello is a handshake request with the server, returns a description of the cluster state
 	Hello() (HelloResponse, error)
 
+	// Show returns the information about the job
+	Show(id string) (ShowResponse, error)
+
 	// Close closes the underlying connection
 	Close() error
 }
@@ -316,6 +319,74 @@ func (c *RedisClient) Hello() (HelloResponse, error) {
 			ret.Nodes = append(ret.Nodes, node)
 		}
 
+	}
+
+	return ret, nil
+}
+
+type ShowResponse struct {
+	ID                   string `redis:"id"`
+	Queue                string `redis:"queue"`
+	State                string `redis:"state"`
+	Repl                 uint   `redis:"repl"`
+	TTL                  uint   `redis:"ttl"`
+	Ctime                uint   `redis:"ctime"`
+	Delay                uint   `redis:"delay"`
+	Retry                uint   `redis:"retry"`
+	Nacks                uint   `redis:"nacks"`
+	AdditionalDeliveries uint   `redis:"additional-deliveries"`
+	NodesDelivered       []string
+	NodesConfirmed       []string
+	NextRequeueWithin    uint `redis:"next-requeue-within"`
+	NextAwakeWithin      uint `redis:"next-awake-within"`
+}
+
+type JobNotFoundError struct {
+	ID string
+}
+
+func (e JobNotFoundError) Error() string {
+	return fmt.Sprintf("Job %s Not Found", e.ID)
+}
+
+func (c *RedisClient) Show(id string) (ShowResponse, error) {
+	args := make(redis.Args, 0, 1)
+	args = args.AddFlat(id)
+	vals, err := redis.Values(c.conn.Do("SHOW", args...))
+	ret := ShowResponse{}
+	if err != nil {
+		if err.Error() == "redigo: nil returned" {
+			return ret, JobNotFoundError{ID: id}
+		}
+		return ret, err
+	}
+
+	if err := redis.ScanStruct(vals, &ret); err != nil {
+		return ret, err
+	}
+
+	nodesDeliveredIsNext := false
+	nodesConfirmedIsNext := false
+	for _, v := range vals {
+		if possibleKey, ok := v.([]byte); ok {
+			if string(possibleKey) == "nodes-delivered" {
+				nodesDeliveredIsNext = true
+			} else if string(possibleKey) == "nodes-confirmed" {
+				nodesConfirmedIsNext = true
+			}
+		} else if nodesDeliveredIsNext {
+			nodesDeliveredIsNext = false
+			nodes := v.([]interface{})
+			for _, node := range nodes {
+				ret.NodesDelivered = append(ret.NodesDelivered, string(node.([]byte)))
+			}
+		} else if nodesConfirmedIsNext {
+			nodesConfirmedIsNext = false
+			nodes := v.([]interface{})
+			for _, node := range nodes {
+				ret.NodesConfirmed = append(ret.NodesConfirmed, string(node.([]byte)))
+			}
+		}
 	}
 
 	return ret, nil

@@ -16,6 +16,7 @@ func dial(addr string) (redis.Conn, error) {
 	timeout := time.Second
 	return redis.DialTimeout("tcp", addr, timeout, timeout, timeout)
 }
+
 func TestAddJob(t *testing.T) {
 
 	pool := NewPool(DialFunc(dial), addr)
@@ -234,6 +235,14 @@ func TestClient(t *testing.T) {
 		t.Errorf("Wrong queue len. expected 1, got %d", l)
 	}
 
+	if jobInfo, err := client.Show(id); err != nil {
+		t.Error(err)
+	} else if jobInfo.ID != id {
+		t.Errorf("Mismatched SHOW result, expected %s, got %s", id, jobInfo.ID)
+	} else if len(jobInfo.NodesDelivered) != 1 {
+		t.Errorf("Wrong NodesDelivered len. expected 1 got %d", len(jobInfo.NodesDelivered))
+	}
+
 	job, err := client.Get(time.Second, qname)
 	if err != nil {
 		t.Error(err)
@@ -260,6 +269,24 @@ func TestClient(t *testing.T) {
 		t.Errorf("Error ACKing: %s", err)
 	}
 
+}
+
+func TestShow(t *testing.T) {
+	pool := NewPool(DialFunc(dial), addr)
+
+	client, err := pool.Get()
+	if err != nil || client == nil {
+		panic("could not get client" + err.Error())
+	}
+	defer client.Close()
+
+	if jobInfo, err := client.Show("D-2240cc19-4/16usG8/LqamguoKNrPD0eh-05a1"); err != nil {
+		if _, ok := err.(JobNotFoundError); !ok {
+			t.Errorf("unexpected Show error, expected JobNotFoundError, got %s", err)
+		}
+	} else if &jobInfo != nil {
+		t.Errorf("Expected jobInfo to be nil, got %+v", &jobInfo)
+	}
 }
 
 func BenchmarkAdd(b *testing.B) {
