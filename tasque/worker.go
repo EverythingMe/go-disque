@@ -128,6 +128,7 @@ func (w *Worker) Run() {
 			case <-w.stopch:
 				return
 			case <-time.After(100 * time.Millisecond):
+				continue
 			}
 
 		}
