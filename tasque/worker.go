@@ -122,7 +122,6 @@ func (w *Worker) Run() {
 
 	for {
 		client, err := w.pool.Get()
-		defer client.Close()
 		if err != nil {
 			log.Println("tasque: could not get client")
 			select {
@@ -132,6 +131,7 @@ func (w *Worker) Run() {
 			}
 
 		}
+		defer client.Close()
 
 		for {
 			select {
